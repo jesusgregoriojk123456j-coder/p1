@@ -1,11 +1,13 @@
+
 const express = require('express');
 const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
 const PDFDocument = require('pdfkit');
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const pool = require('./config/db');
+const { scrypt } = require('crypto');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
