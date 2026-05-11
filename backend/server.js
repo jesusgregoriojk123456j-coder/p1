@@ -9,6 +9,65 @@ const jwt = require('jsonwebtoken');
 const pool = require('./config/db');
 const { scrypt } = require('crypto');
 
+async function initializeDatabase() {
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS clases (
+            id SERIAL PRIMARY KEY,
+            codigo TEXT UNIQUE NOT NULL,
+            nombre TEXT NOT NULL,
+            grado INTEGER NOT NULL,
+            grupo TEXT NOT NULL,
+            maestro TEXT NOT NULL
+        );
+    `);
+
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS equipos (
+            id SERIAL PRIMARY KEY,
+            numero TEXT UNIQUE NOT NULL,
+            marca TEXT,
+            modelo TEXT,
+            estado TEXT NOT NULL DEFAULT 'disponible',
+            ubicacion TEXT,
+            especificaciones TEXT,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+    `);
+
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS bitacora (
+            id SERIAL PRIMARY KEY,
+            equipo_id INTEGER REFERENCES equipos(id) ON DELETE SET NULL,
+            usuario_nombre TEXT NOT NULL,
+            tipo_usuario TEXT NOT NULL,
+            clase_id INTEGER REFERENCES clases(id) ON DELETE SET NULL,
+            tipo_registro TEXT NOT NULL,
+            proposito TEXT NOT NULL,
+            observaciones TEXT,
+            fecha DATE NOT NULL,
+            hora TEXT NOT NULL
+        );
+    `);
+
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS mantenimientos (
+            id SERIAL PRIMARY KEY,
+            equipo_id INTEGER REFERENCES equipos(id) ON DELETE SET NULL,
+            tipo TEXT NOT NULL,
+            fecha DATE NOT NULL,
+            tecnico TEXT,
+            descripcion TEXT,
+            observaciones TEXT,
+            estado TEXT NOT NULL
+        );
+    `);
+}
+
+initializeDatabase().catch(error => {
+    console.error('Error inicializando la base de datos:', error);
+    process.exit(1);
+});
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'sigelab_secret_key_2024';
