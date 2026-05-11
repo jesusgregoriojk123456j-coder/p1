@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIGELAB - Reportes</title>
+    <link rel="stylesheet" href="css/estilos.css">
+</head>
+<body>
+
+    <header>
+        <h1><i>📊</i> Reportes</h1>
+        <nav>
+            <a href="index.html">Inicio</a>
+            <a href="bitacora.html">Bitácora</a>
+            <a href="inventario.html">Inventario</a>
+            <a href="admin-panel.html">Panel</a>
+        </nav>
+    </header>
+
+    <main>
+        <div class="contenedor">
+            <h2><i>📈</i> Generar Reportes</h2>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem;">
+                <!-- Reporte de accesos -->
+                <div class="card" style="padding: 2rem;">
+                    <h3>Reporte de Accesos</h3>
+                    <p>Genera un reporte detallado de entradas y salidas</p>
+                    <div class="form-group">
+                        <label>Período:</label>
+                        <select id="periodo-accesos">
+                            <option>Hoy</option>
+                            <option>Esta semana</option>
+                            <option>Este mes</option>
+                            <option>Personalizado</option>
+                        </select>
+                    </div>
+                    <button onclick="generarReporte('accesos')" class="btn-exito">📥 Generar PDF</button>
+                    <button onclick="exportarExcel('accesos')" class="btn-secundario">📊 Exportar Excel</button>
+                </div>
+
+                <!-- Reporte de uso de equipos -->
+                <div class="card" style="padding: 2rem;">
+                    <h3>Uso de Equipos</h3>
+                    <p>Estadísticas de utilización de computadoras</p>
+                    <div class="form-group">
+                        <label>Equipo:</label>
+                        <select id="equipo-reporte">
+                            <option>Todos los equipos</option>
+                            <option>PC-01</option>
+                            <option>PC-02</option>
+                            <option>PC-03</option>
+                        </select>
+                    </div>
+                    <button onclick="generarReporte('equipos')" class="btn-exito">📥 Generar PDF</button>
+                    <button onclick="exportarExcel('equipos')" class="btn-secundario">📊 Exportar Excel</button>
+                </div>
+
+                <!-- Reporte de estudiantes -->
+                <div class="card" style="padding: 2rem;">
+                    <h3>Reporte por Estudiante</h3>
+                    <p>Historial de accesos por clase</p>
+                    <div class="form-group">
+                        <input type="text" placeholder="Ingresar clase">
+                    </div>
+                    <button onclick="generarReporte('estudiante')" class="btn-exito">📥 Generar PDF</button>
+                </div>
+            </div>
+            <div id="reporte-link" style="margin-top: 1.5rem; display: none;
+                background: #eef5ff; padding: 1rem; border-radius: 12px; border: 1px solid #ccd9ff;
+                color: #1f3c88; font-size: 0.95rem;">
+            </div>
+        </div>
+
+        <!-- Gráficas (simuladas) -->
+        <div class="contenedor">
+            <h2><i>📊</i> Estadísticas</h2>
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 2rem;">
+                <div style="background: #f8f9fa; padding: 2rem; border-radius: 10px; text-align: center;">
+                    <h3>Uso por hora</h3>
+                    <div style="height: 200px; display: flex; align-items: flex-end; justify-content: center; gap: 1rem;">
+                        <div style="width: 40px; height: 80px; background: #667eea; border-radius: 5px;"></div>
+                        <div style="width: 40px; height: 150px; background: #667eea; border-radius: 5px;"></div>
+                        <div style="width: 40px; height: 120px; background: #667eea; border-radius: 5px;"></div>
+                        <div style="width: 40px; height: 90px; background: #667eea; border-radius: 5px;"></div>
+                        <div style="width: 40px; height: 60px; background: #667eea; border-radius: 5px;"></div>
+                    </div>
+                    <p>8am 10am 12pm 2pm 4pm</p>
+                </div>
+                
+                <div style="background: #f8f9fa; padding: 2rem; border-radius: 10px;">
+                    <h3>Distribución por tipo</h3>
+                    <div style="margin-top: 1rem;">
+                        <p>👨‍🎓 Estudiantes: 75%</p>
+                        <div style="width: 100%; height: 20px; background: #e0e0e0; border-radius: 10px;">
+                            <div style="width: 75%; height: 20px; background: #667eea; border-radius: 10px;"></div>
+                        </div>
+                        <p>👤 Externos: 25%</p>
+                        <div style="width: 100%; height: 20px; background: #e0e0e0; border-radius: 10px; margin-top: 0.5rem;">
+                            <div style="width: 25%; height: 20px; background: #764ba2; border-radius: 10px;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; 2024 SIGELAB - Módulo de Reportes</p>
+    </footer>
+
+    <script src="js/admin.js"></script>
+    <script>
+        async function generarReporte(tipo) {
+            const periodo = document.getElementById('periodo-accesos')?.value || '';
+            const equipo = document.getElementById('equipo-reporte')?.value || '';
+            const clase = document.querySelector('input[placeholder="Ingresar clase"]')?.value || '';
+            const requestBody = { tipo, periodo, equipo, clase };
+
+            try {
+                const response = await fetch('/api/reportes/generar', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(requestBody)
+                });
+
+                if (!response.ok) {
+                    const errorRes = await response.json();
+                    throw new Error(errorRes.error || 'Error al generar el reporte');
+                }
+
+                const data = await response.json();
+                const linkContainer = document.getElementById('reporte-link');
+                linkContainer.style.display = 'block';
+                linkContainer.innerHTML = `PDF generado correctamente. <a href="${data.url}" target="_blank" style="color: #0f4dbd; text-decoration: underline;">Abrir reporte</a> o <a href="${data.url}" download style="color: #0f4dbd; text-decoration: underline;">Descargar</a>`;
+            } catch (error) {
+                alert('❌ ' + error.message);
+                console.error('Error generando reporte:', error);
+            }
+        }
+
+        function exportarExcel(tipo) {
+            alert('Función de exportar Excel aún no está implementada.');
+        }
+    </script>
+</body>
+</html>

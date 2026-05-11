@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIGELAB - Registrar Acceso</title>
+    <link rel="stylesheet" href="css/estilos.css">
+    <script src="js/config.js"></script>
+</head>
+<body>
+
+    <header>
+        <h1><i>📝</i> Registrar Acceso</h1>
+        <nav>
+            <a href="index.html">Inicio</a>
+            <a href="inventario.html">Inventario</a>
+            <a href="login-admin.html">Administrador</a>
+        </nav>
+    </header>
+
+    <main>
+        <div class="contenedor">
+            <h2><i>📋</i> Registro de Bitácora</h2>
+            <p style="margin-bottom: 1rem; color: #444;">Se guarda un único registro por acceso, sin selección de ingreso/salida.</p>
+            
+            <form id="form-bitacora" class="bitacora-form">
+                <!-- Selección de tipo de usuario -->
+                <div class="form-group">
+                    <label>Tipo de Usuario:</label>
+                    <div class="tipo-usuario">
+                        <div class="tipo-opcion" id="tipo-estudiante" onclick="seleccionarTipo('estudiante')">
+                            <span class="icono">👨‍🎓</span>
+                            <h4>Estudiante</h4>
+                            <p>Alumno de la institución</p>
+                        </div>
+                        <div class="tipo-opcion" id="tipo-externo" onclick="seleccionarTipo('externo')">
+                            <span class="icono">👤</span>
+                            <h4>Externo</h4>
+                            <p>Persona externa</p>
+                        </div>
+                    </div>
+                    <input type="hidden" id="tipo_usuario" name="tipo_usuario" required>
+                </div>
+
+                <!-- Número de computadora -->
+                <div class="form-group">
+                    <label for="computadora">Número de Computadora:</label>
+                    <select id="computadora" name="computadora" required>
+                        <option value="">Selecciona una computadora disponible</option>
+                        <option value="PC-01">PC-01 (Disponible)</option>
+                        <option value="PC-02">PC-02 (Disponible)</option>
+                        <option value="PC-03">PC-03 (En uso)</option>
+                        <option value="PC-04">PC-04 (Disponible)</option>
+                        <option value="PC-05">PC-05 (Mantenimiento)</option>
+                        <option value="PC-06">PC-06 (Disponible)</option>
+                    </select>
+                </div>
+
+                <!-- Nombre completo -->
+                <div class="form-group">
+                    <label for="nombre">Nombre Completo:</label>
+                    <input type="text" id="nombre" name="nombre" placeholder="Ej: Juan Pérez García" required>
+                </div>
+
+                <!-- Clase (solo visible para estudiantes) -->
+                <div class="form-group" id="campo-clase" style="display: none;">
+                    <label for="clase">Clase:</label>
+                    <select id="clase" name="clase">
+                        <option value="">Selecciona tu clase</option>
+                        <!-- Se llenará con JavaScript -->
+                    </select>
+                </div>
+
+                <!-- Fecha y hora (automáticas) -->
+                <div class="form-group">
+                    <label>Fecha y Hora de Registro:</label>
+                    <input type="text" id="fecha_hora" readonly value="Cargando fecha y hora..." style="background: #f8f9fa;">
+                </div>
+
+                <input type="hidden" id="tipo_registro" name="tipo_registro" value="registro">
+
+                <!-- Propósito de uso -->
+                <div class="form-group">
+                    <label for="proposito">Propósito de uso:</label>
+                    <select id="proposito" name="proposito" required>
+                        <option value="">Selecciona una opción</option>
+                        <option value="clase">Clase/Tarea académica</option>
+                        <option value="investigacion">Investigación</option>
+                        <option value="practica">Práctica de laboratorio</option>
+                        <option value="examen">Examen/Evaluación</option>
+                        <option value="otro">Otro</option>
+                    </select>
+                </div>
+
+                <!-- Observaciones -->
+                <div class="form-group">
+                    <label for="observaciones">Observaciones (opcional):</label>
+                    <textarea id="observaciones" name="observaciones" rows="3" placeholder="Alguna observación adicional..."></textarea>
+                </div>
+
+                <div style="text-align: center; margin-top: 2rem;">
+                    <button type="submit" class="btn-exito">✅ Registrar Acceso</button>
+                    <button type="reset" class="btn-secundario">🔄 Limpiar</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Registros recientes -->
+        <div class="contenedor">
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;">
+                <h2><i>📊</i> Accesos Recientes</h2>
+                <button onclick="generarPDFBitacora()" class="btn-exito">📥 Generar PDF de Bitácora</button>
+            </div>
+            <div class="tabla-contenedor">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Hora</th>
+                            <th>Computadora</th>
+                            <th>Nombre</th>
+                            <th>Tipo</th>
+                            <th>Clase</th>
+                            <th>Propósito</th>
+                        </tr>
+                    </thead>
+                    <tbody id="registros-recientes">
+                        <!-- Se llenará con JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; 2024 SIGELAB - Bitácora Digital</p>
+    </footer>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script>
+    // Configuración de la API
+    window.API_URL = '/api';
+
+    // Función para peticiones a la API
+    async function fetchAPI(endpoint, options = {}) {
+        const headers = {
+            'Content-Type': 'application/json',
+            ...options.headers
+        };
+        
+        const response = await fetch(`${window.API_URL}${endpoint}`, {
+            ...options,
+            headers
+        });
+        
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Error en la petición');
+        }
+        
+        return response.json();
+    }
+
+    class BitacoraRegistro {
+        constructor(equipoNumero, usuarioNombre, tipoUsuario, claseId, proposito, observaciones) {
+            this.equipo_numero = equipoNumero;
+            this.usuario_nombre = usuarioNombre;
+            this.tipo_usuario = tipoUsuario;
+            this.clase_id = claseId || null;
+            this.tipo_registro = 'registro';
+            this.proposito = proposito;
+            this.observaciones = observaciones || '';
+        }
+
+        toPayload() {
+            return {
+                equipo_numero: this.equipo_numero,
+                usuario_nombre: this.usuario_nombre,
+                tipo_usuario: this.tipo_usuario,
+                clase_id: this.clase_id,
+                tipo_registro: this.tipo_registro,
+                proposito: this.proposito,
+                observaciones: this.observaciones
+            };
+        }
+    }
+
+    let tipoUsuarioSeleccionado = '';
+
+    // Actualizar fecha y hora
+    function actualizarFechaHora() {
+        const ahora = new Date();
+        const fechaHora = ahora.toLocaleString('es-MX');
+        const campoFecha = document.getElementById('fecha_hora');
+        if (campoFecha) {
+            campoFecha.value = fechaHora;
+        }
+    }
+
+    setInterval(actualizarFechaHora, 1000);
+
+    // Seleccionar tipo de usuario
+    function seleccionarTipo(tipo) {
+        tipoUsuarioSeleccionado = tipo;
+        
+        document.getElementById('tipo-estudiante').classList.remove('seleccionado');
+        document.getElementById('tipo-externo').classList.remove('seleccionado');
+        
+        if (tipo === 'estudiante') {
+            document.getElementById('tipo-estudiante').classList.add('seleccionado');
+            document.getElementById('campo-clase').style.display = 'block';
+            document.getElementById('clase').required = true;
+            cargarClases();
+        } else {
+            document.getElementById('tipo-externo').classList.add('seleccionado');
+            document.getElementById('campo-clase').style.display = 'none';
+            document.getElementById('clase').required = false;
+        }
+        
+        document.getElementById('tipo_usuario').value = tipo;
+    }
+
+    // Cargar clases desde la BD
+    async function cargarClases() {
+        try {
+            const clases = await fetchAPI('/clases');
+            const selectClase = document.getElementById('clase');
+            
+            if (selectClase) {
+                selectClase.innerHTML = '<option value="">Selecciona tu clase</option>';
+                clases.forEach(clase => {
+                    const option = document.createElement('option');
+                    option.value = clase.id;
+                    option.textContent = `${clase.nombre} (${clase.codigo}) - ${clase.maestro}`;
+                    selectClase.appendChild(option);
+                });
+            }
+        } catch (error) {
+            console.error('Error cargando clases:', error);
+        }
+    }
+
+    // Cargar equipos disponibles
+    async function cargarEquipos() {
+        try {
+            const equipos = await fetchAPI('/equipos');
+            const selectEquipo = document.getElementById('computadora');
+            
+            if (selectEquipo) {
+                selectEquipo.innerHTML = '<option value="">Selecciona una computadora</option>';
+                equipos.forEach(equipo => {
+                    const estadoTexto = equipo.estado === 'disponible' ? '✅ Disponible' : 
+                                       equipo.estado === 'uso' ? '🔄 En uso' : '🔧 Mantenimiento';
+                    const option = document.createElement('option');
+                    option.value = equipo.numero;
+                    option.textContent = `${equipo.numero} (${equipo.marca}) - ${estadoTexto}`;
+                    option.disabled = equipo.estado !== 'disponible';
+                    selectEquipo.appendChild(option);
+                });
+            }
+        } catch (error) {
+            console.error('Error cargando equipos:', error);
+        }
+    }
+
+    // Cargar registros recientes
+    async function cargarRegistrosRecientes() {
+        try {
+            const registros = await fetchAPI('/bitacora/recientes');
+            const tbody = document.getElementById('registros-recientes');
+            
+            if (tbody) {
+                tbody.innerHTML = registros.map(reg => `
+                    <tr>
+                        <td>${reg.hora}</td>
+                        <td>${reg.equipo_numero}</td>
+                        <td>${reg.usuario_nombre}</td>
+                        <td>${reg.tipo_usuario === 'estudiante' ? '👨‍🎓 Estudiante' : '👤 Externo'}</td>
+                        <td>${reg.clase_nombre || '-'}</td>
+                        <td>${reg.proposito}</td>
+                    </tr>
+                `).join('');
+            }
+        } catch (error) {
+            console.error('Error cargando registros:', error);
+        }
+    }
+
+    // Registrar acceso
+document.addEventListener('DOMContentLoaded', function() {
+        actualizarFechaHora();
+        cargarEquipos();
+        cargarRegistrosRecientes();
+        
+        const form = document.getElementById('form-bitacora');
+        if (form) {
+            form.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                
+                if (!tipoUsuarioSeleccionado) {
+                    alert('❌ Por favor selecciona el tipo de usuario');
+                    return;
+                }
+                
+                const equipo_numero = document.getElementById('computadora').value;
+                const usuario_nombre = document.getElementById('nombre').value;
+                const clase_id = document.getElementById('clase').value || null;
+                const proposito = document.getElementById('proposito').value;
+                const observaciones = document.getElementById('observaciones').value;
+                
+                if (!equipo_numero || !usuario_nombre || !proposito) {
+                    alert('❌ Por favor completa todos los campos obligatorios');
+                    return;
+                }
+                
+                const nuevoRegistro = new BitacoraRegistro(
+                    equipo_numero,
+                    usuario_nombre,
+                    tipoUsuarioSeleccionado,
+                    clase_id,
+                    proposito,
+                    observaciones
+                );
+
+                try {
+                    await fetchAPI('/bitacora', {
+                        method: 'POST',
+                        body: JSON.stringify(nuevoRegistro.toPayload())
+                    });
+                    
+                    alert('✅ Acceso registrado correctamente');
+                    form.reset();
+                    tipoUsuarioSeleccionado = '';
+                    document.getElementById('tipo-estudiante').classList.remove('seleccionado');
+                    document.getElementById('tipo-externo').classList.remove('seleccionado');
+                    document.getElementById('campo-clase').style.display = 'none';
+                    
+                    // Recargar datos
+                    cargarEquipos();
+                    cargarRegistrosRecientes();
+                    
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('❌ Error al registrar el acceso');
+                }
+            });
+        }
+    });
+
+    async function generarPDFBitacora() {
+        try {
+            const registros = await fetchAPI('/bitacora?limite=100');
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF({ unit: 'pt', format: 'letter' });
+            const margin = 40;
+            let y = 50;
+
+            doc.setFontSize(16);
+            doc.text('Reporte de Bitácora Única', margin, y);
+            y += 24;
+            doc.setFontSize(10);
+            doc.text(`Fecha de generación: ${new Date().toLocaleString('es-MX')}`, margin, y);
+            y += 24;
+
+            const headers = ['Hora', 'Equipo', 'Nombre', 'Tipo', 'Clase', 'Propósito', 'Observaciones'];
+            doc.setFontSize(10);
+            doc.text(headers.join(' | '), margin, y);
+            y += 14;
+            doc.setLineWidth(0.5);
+            doc.line(margin, y, 555, y);
+            y += 18;
+
+            registros.forEach(reg => {
+                if (y > 740) {
+                    doc.addPage();
+                    y = 50;
+                }
+
+                const line = [
+                    reg.hora || '-',
+                    reg.equipo_numero || '-',
+                    reg.usuario_nombre || '-',
+                    reg.tipo_usuario === 'estudiante' ? 'Estudiante' : 'Externo',
+                    reg.clase_nombre || '-',
+                    reg.proposito || '-',
+                    reg.observaciones || '-'
+                ].join(' | ');
+
+                const splitText = doc.splitTextToSize(line, 520);
+                doc.text(splitText, margin, y);
+                y += 14 * splitText.length;
+            });
+
+            doc.save(`bitacora_${new Date().toISOString().slice(0, 10)}.pdf`);
+        } catch (error) {
+            console.error('Error generando PDF:', error);
+            alert('❌ No se pudo generar el PDF de la bitácora');
+        }
+    }
+    </script>
+</body>
+</html>

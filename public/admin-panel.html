@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIGELAB - Panel Administrativo</title>
+    <link rel="stylesheet" href="css/estilos.css">
+    <script src="js/config.js"></script>
+</head>
+<body>
+
+    <header>
+        <h1><i>👨‍💼</i> Panel Administrativo</h1>
+        <button class="logout-btn" onclick="logout()">🚪 Cerrar Sesión</button>
+        <nav>
+            <a href="index.html">Inicio</a>
+            <a href="bitacora.html">Bitácora</a>
+            <a href="inventario.html">Inventario</a>
+            <a href="reportes.html">Reportes</a>
+        </nav>
+    </header>
+
+    <main>
+        <!-- Estadísticas rápidas -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+            <div class="contenedor" style="text-align: center;">
+                <h3>Accesos hoy</h3>
+                <p style="font-size: 2.5rem; color: #667eea;" id="stats-hoy">0</p>
+            </div>
+            <div class="contenedor" style="text-align: center;">
+                <h3>Equipos en uso</h3>
+                <p style="font-size: 2.5rem; color: #f39c12;" id="stats-uso">0</p>
+            </div>
+            <div class="contenedor" style="text-align: center;">
+                <h3>Total registros</h3>
+                <p style="font-size: 2.5rem; color: #27ae60;" id="stats-total">0</p>
+            </div>
+        </div>
+
+        <!-- Consulta de bitácora -->
+        <div class="contenedor">
+            <h2><i>📋</i> Consulta de Bitácora</h2>
+            
+            <!-- Filtros -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+                <input type="date" id="filtro-fecha" class="form-control">
+                <select id="filtro-tipo">
+                    <option value="">Todos los tipos</option>
+                    <option value="estudiante">Estudiantes</option>
+                    <option value="externo">Externos</option>
+                </select>
+                <input type="text" id="filtro-busqueda" placeholder="Buscar por nombre o clase">
+                <button onclick="aplicarFiltros()" class="btn-secundario">Filtrar</button>
+            </div>
+
+            <div class="tabla-contenedor">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Fecha/Hora</th>
+                            <th>Computadora</th>
+                            <th>Nombre</th>
+                            <th>Tipo</th>
+                            <th>Clase</th>
+                            <th>Propósito</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabla-bitacora">
+                        <!-- Se llena con JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Control de inventario rápido -->
+        <div class="contenedor">
+            <h2><i>🔧</i> Control Rápido de Inventario</h2>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">
+                <div class="equipo-card" onclick="location.href='inventario.html'">
+                    <h3>Gestionar Equipos</h3>
+                    <p>Agregar, editar o eliminar equipos</p>
+                    <button class="btn-exito">Ir a inventario</button>
+                </div>
+                
+                <div class="equipo-card" onclick="actualizarEstadoMasivo()">
+                    <h3>Actualizar Estados</h3>
+                    <p>Cambiar estado de múltiples equipos</p>
+                    <button class="btn-advertencia">Actualizar</button>
+                </div>
+                
+                <div class="equipo-card" onclick="generarReporteRapido()">
+                    <h3>Reporte Rápido</h3>
+                    <p>Generar reporte de ocupación</p>
+                    <button class="btn-secundario">Generar</button>
+                </div>
+            </div>
+        <!-- Gestión de Clases -->
+        <div class="contenedor">
+            <h2><i>📚</i> Gestión de Clases</h2>
+            
+            <!-- Formulario para crear clase -->
+            <div style="margin-bottom: 2rem;">
+                <h3>Crear Nueva Clase</h3>
+                <form id="form-clase" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; align-items: end;">
+                    <div>
+                        <label for="grado">Grado:</label>
+                        <select id="grado" required>
+                            <option value="">Selecciona grado</option>
+                            <option value="1">1° Grado</option>
+                            <option value="2">2° Grado</option>
+                            <option value="3">3° Grado</option>
+                            <option value="4">4° Grado</option>
+                            <option value="5">5° Grado</option>
+                            <option value="6">6° Grado</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="grupo">Grupo:</label>
+                        <select id="grupo" required>
+                            <option value="">Selecciona grupo</option>
+                            <option value="A">A</option>
+                            <option value="B">B</option>
+                            <option value="C">C</option>
+                            <option value="D">D</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="nombre_clase">Nombre de la Clase:</label>
+                        <input type="text" id="nombre_clase" placeholder="Ej: Matemáticas Básicas" required>
+                    </div>
+                    <div>
+                        <label for="maestro">Nombre del Maestro:</label>
+                        <input type="text" id="maestro" placeholder="Ej: Prof. García" required>
+                    </div>
+                    <button type="submit" class="btn-exito">➕ Crear Clase</button>
+                </form>
+            </div>
+            
+            <!-- Lista de clases -->
+            <div class="tabla-contenedor">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Nombre de la Clase</th>
+                            <th>Grado</th>
+                            <th>Grupo</th>
+                            <th>Maestro</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabla-clases">
+                        <!-- Se llenará con JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; 2024 SIGELAB - Panel Administrativo</p>
+    </footer>
+
+    <script>
+    // Configuración de la API
+    window.API_URL = '/api';
+
+    // Función para peticiones a la API
+    async function fetchAPI(endpoint, options = {}) {
+        const token = localStorage.getItem('token');
+        const headers = {
+            'Content-Type': 'application/json',
+            ...options.headers
+        };
+        
+        if (token) {
+            headers['Authorization'] = token;
+        }
+        
+        const response = await fetch(`${window.API_URL}${endpoint}`, {
+            ...options,
+            headers
+        });
+        
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Error en la petición');
+        }
+        
+        return response.json();
+    }
+
+    // Verificar autenticación
+    document.addEventListener('DOMContentLoaded', function() {
+        const token = localStorage.getItem('token');
+        if (!token) {
+            window.location.href = 'login-admin.html';
+        } else {
+            cargarDashboard();
+            cargarBitacora();
+            cargarClases();
+        }
+    });
+
+    // Cargar estadísticas del dashboard
+    async function cargarDashboard() {
+        try {
+            const stats = await fetchAPI('/stats/dashboard');
+            document.getElementById('stats-hoy').textContent = stats.accesos_hoy || 0;
+            document.getElementById('stats-uso').textContent = stats.equipos_uso || 0;
+            document.getElementById('stats-total').textContent = stats.total_registros || 0;
+        } catch (error) {
+            console.error('Error cargando dashboard:', error);
+        }
+    }
+
+    // Cargar bitácora
+    async function cargarBitacora() {
+        try {
+            const registros = await fetchAPI('/bitacora?limite=50');
+            const tbody = document.getElementById('tabla-bitacora');
+            
+            if (tbody) {
+                tbody.innerHTML = registros.map(reg => `
+                    <tr>
+                        <td>${reg.fecha} ${reg.hora}</td>
+                        <td>${reg.equipo_numero}</td>
+                        <td>${reg.usuario_nombre}</td>
+                        <td>${reg.tipo_usuario === 'estudiante' ? '👨‍🎓 Estudiante' : '👤 Externo'}</td>
+                        <td>${reg.clase_nombre || '-'}</td>
+                        <td>${reg.proposito}</td>
+                        <td>
+                            <button onclick="eliminarRegistro(${reg.id})" class="btn-eliminar" style="padding: 5px 10px;">🗑️</button>
+                        </td>
+                    </tr>
+                `).join('');
+            }
+        } catch (error) {
+            console.error('Error cargando bitácora:', error);
+        }
+    }
+
+    // Cargar clases
+    async function cargarClases() {
+        try {
+            const clases = await fetchAPI('/clases');
+            const tbody = document.getElementById('tabla-clases');
+            
+            if (tbody) {
+                tbody.innerHTML = clases.map(clase => `
+                    <tr>
+                        <td>${clase.nombre}</td>
+                        <td>${clase.grado}° Grado</td>
+                        <td>${clase.grupo}</td>
+                        <td>${clase.maestro}</td>
+                        <td>
+                            <button onclick="eliminarClase(${clase.id})" class="btn-eliminar" style="padding: 5px 10px;">🗑️</button>
+                        </td>
+                    </tr>
+                `).join('');
+            }
+        } catch (error) {
+            console.error('Error cargando clases:', error);
+        }
+    }
+
+    // Eliminar registro
+    async function eliminarRegistro(id) {
+        if (confirm('¿Eliminar este registro?')) {
+            try {
+                await fetchAPI(`/bitacora/${id}`, { method: 'DELETE' });
+                alert('✅ Registro eliminado');
+                cargarBitacora();
+            } catch (error) {
+                alert('❌ Error al eliminar');
+            }
+        }
+    }
+
+    // Eliminar clase
+    async function eliminarClase(id) {
+        if (confirm('¿Eliminar esta clase?')) {
+            try {
+                await fetchAPI(`/clases/${id}`, { method: 'DELETE' });
+                alert('✅ Clase eliminada');
+                cargarClases();
+            } catch (error) {
+                alert('❌ Error al eliminar');
+            }
+        }
+    }
+
+    // Crear clase
+    document.addEventListener('DOMContentLoaded', function() {
+        const formClase = document.getElementById('form-clase');
+        if (formClase) {
+            formClase.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                
+                const grado = document.getElementById('grado').value;
+                const grupo = document.getElementById('grupo').value;
+                const nombre = document.getElementById('nombre_clase').value;
+                const maestro = document.getElementById('maestro').value;
+                const codigo = grado + grupo;
+                
+                try {
+                    await fetchAPI('/clases', {
+                        method: 'POST',
+                        body: JSON.stringify({ codigo, nombre, grado, grupo, maestro })
+                    });
+                    
+                    alert('✅ Clase creada');
+                    formClase.reset();
+                    cargarClases();
+                } catch (error) {
+                    alert('❌ Error al crear clase');
+                }
+            });
+        }
+    });
+
+    // Cerrar sesión
+    function logout() {
+        localStorage.removeItem('token');
+        localStorage.removeItem('usuario');
+        window.location.href = 'index.html';
+    }
+
+    // Funciones auxiliares
+    function aplicarFiltros() {
+        cargarBitacora();
+    }
+
+    function generarReporte(tipo) {
+        alert(`📊 Generando reporte de ${tipo}...`);
+    }
+
+    function exportarExcel(tipo) {
+        alert(`📊 Exportando ${tipo} a Excel...`);
+    }
+
+    function actualizarEstadoMasivo() {
+        alert('🔧 Función en desarrollo');
+    }
+
+    function generarReporteRapido() {
+        alert('📊 Generando reporte rápido...');
+    }
+    </script>
+</body>
+</html>

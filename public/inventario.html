@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIGELAB - Inventario de Equipos</title>
+    <link rel="stylesheet" href="css/estilos.css">
+    <script src="js/config.js"></script>
+</head>
+<body>
+
+    <header>
+        <h1><i>💻</i> Inventario de Equipos</h1>
+        <nav>
+            <a href="index.html">Inicio</a>
+            <a href="bitacora.html">Bitácora</a>
+            <a href="login-admin.html">Administrador</a>
+        </nav>
+    </header>
+
+    <main>
+        <div class="contenedor">
+            <h2><i>📊</i> Estado Actual de Equipos</h2>
+            
+            <!-- Resumen de estados -->
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 2rem;">
+                <div style="background: #d4edda; padding: 1rem; border-radius: 10px; text-align: center;">
+                    <h3 style="color: #155724;">Disponibles</h3>
+                    <p style="font-size: 2rem; font-weight: 700;" id="total-disponibles">0</p>
+                </div>
+                <div style="background: #fff3cd; padding: 1rem; border-radius: 10px; text-align: center;">
+                    <h3 style="color: #856404;">En Uso</h3>
+                    <p style="font-size: 2rem; font-weight: 700;" id="total-uso">0</p>
+                </div>
+                <div style="background: #f8d7da; padding: 1rem; border-radius: 10px; text-align: center;">
+                    <h3 style="color: #721c24;">Mantenimiento</h3>
+                    <p style="font-size: 2rem; font-weight: 700;" id="total-mantenimiento">0</p>
+                </div>
+            </div>
+
+            <!-- Botones de acción (visibles solo para admin) -->
+            <div style="text-align: right; margin-bottom: 2rem;" id="admin-actions" style="display: none;">
+                <button class="btn-exito" onclick="mostrarFormularioEquipo()">➕ Agregar Equipo</button>
+            </div>
+
+            <!-- Grid de equipos -->
+            <div class="equipos-grid" id="equipos-grid">
+                <!-- Se llenará con JavaScript -->
+            </div>
+        </div>
+
+        <!-- Formulario para agregar/editar equipo (oculto por defecto) -->
+        <div class="contenedor" id="form-equipo-container" style="display: none;">
+            <h2 id="form-equipo-titulo">➕ Agregar Nuevo Equipo</h2>
+            <form id="form-equipo">
+                <input type="hidden" id="equipo-id">
+                
+                <div class="form-group">
+                    <label for="equipo-numero">Número de Computadora:</label>
+                    <input type="text" id="equipo-numero" placeholder="Ej: PC-01" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="equipo-marca">Marca/Modelo:</label>
+                    <input type="text" id="equipo-marca" placeholder="Ej: HP EliteDesk" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="equipo-estado">Estado:</label>
+                    <select id="equipo-estado" required>
+                        <option value="disponible">Disponible</option>
+                        <option value="uso">En Uso</option>
+                        <option value="mantenimiento">Mantenimiento</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="equipo-ubicacion">Ubicación:</label>
+                    <input type="text" id="equipo-ubicacion" placeholder="Ej: Laboratorio 101" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="equipo-especificaciones">Especificaciones:</label>
+                    <textarea id="equipo-especificaciones" rows="3" placeholder="Procesador, RAM, etc."></textarea>
+                </div>
+
+                <div style="text-align: center;">
+                    <button type="submit" class="btn-exito">💾 Guardar</button>
+                    <button type="button" class="btn-secundario" onclick="cancelarFormularioEquipo()">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; 2024 SIGELAB - Inventario de Laboratorio</p>
+    </footer>
+
+    <script>
+    // Configuración de la API
+    window.API_URL = '/api';
+
+    // Función para peticiones a la API
+    async function fetchAPI(endpoint, options = {}) {
+        const token = localStorage.getItem('token');
+        const headers = {
+            'Content-Type': 'application/json',
+            ...options.headers
+        };
+        
+        if (token) {
+            headers['Authorization'] = token;
+        }
+        
+        const response = await fetch(`${window.API_URL}${endpoint}`, {
+            ...options,
+            headers
+        });
+        
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Error en la petición');
+        }
+        
+        return response.json();
+    }
+
+    // Verificar si es admin
+    function esAdmin() {
+        const token = localStorage.getItem('token');
+        return !!token;
+    }
+
+    // Cargar inventario
+    async function cargarInventario() {
+        try {
+            const equipos = await fetchAPI('/equipos');
+            const stats = await fetchAPI('/equipos/stats');
+            
+            // Actualizar contadores
+            document.getElementById('total-disponibles').textContent = stats.disponibles || 0;
+            document.getElementById('total-uso').textContent = stats.en_uso || 0;
+            document.getElementById('total-mantenimiento').textContent = stats.mantenimiento || 0;
+            
+            // Mostrar/ocultar botones de admin
+            const adminActions = document.getElementById('admin-actions');
+            if (adminActions) {
+                adminActions.style.display = esAdmin() ? 'block' : 'none';
+            }
+            
+            // Mostrar equipos
+            const grid = document.getElementById('equipos-grid');
+            if (grid) {
+                grid.innerHTML = equipos.map(equipo => {
+                    let estadoClass = '';
+                    let estadoTexto = '';
+                    
+                    switch(equipo.estado) {
+                        case 'disponible':
+                            estadoClass = 'estado-disponible';
+                            estadoTexto = '✅ Disponible';
+                            break;
+                        case 'uso':
+                            estadoClass = 'estado-uso';
+                            estadoTexto = '🔄 En Uso';
+                            break;
+                        case 'mantenimiento':
+                            estadoClass = 'estado-mantenimiento';
+                            estadoTexto = '🔧 Mantenimiento';
+                            break;
+                    }
+                    
+                    return `
+                        <div class="equipo-card ${equipo.estado}">
+                            <div class="equipo-header">
+                                <span class="equipo-numero">${equipo.numero}</span>
+                                <span class="equipo-estado ${estadoClass}">${estadoTexto}</span>
+                            </div>
+                            <div class="equipo-info">
+                                <p><strong>Marca:</strong> ${equipo.marca} ${equipo.modelo || ''}</p>
+                                <p><strong>Ubicación:</strong> ${equipo.ubicacion}</p>
+                                <p><strong>Especificaciones:</strong> ${equipo.especificaciones || 'No especificadas'}</p>
+                            </div>
+                            ${esAdmin() ? `
+                                <div style="margin-top: 1rem; text-align: center;">
+                                    <button onclick="editarEquipo(${equipo.id})" class="btn-secundario" style="padding: 5px 10px;">✏️ Editar</button>
+                                    <button onclick="eliminarEquipo(${equipo.id})" class="btn-eliminar" style="padding: 5px 10px;">🗑️ Eliminar</button>
+                                </div>
+                            ` : ''}
+                        </div>
+                    `;
+                }).join('');
+            }
+        } catch (error) {
+            console.error('Error cargando inventario:', error);
+            alert('Error al cargar el inventario');
+        }
+    }
+
+    // Funciones para admin
+    function mostrarFormularioEquipo() {
+        document.getElementById('form-equipo-container').style.display = 'block';
+        document.getElementById('form-equipo-titulo').textContent = '➕ Agregar Nuevo Equipo';
+        document.getElementById('equipo-id').value = '';
+        document.getElementById('form-equipo').reset();
+    }
+
+    function cancelarFormularioEquipo() {
+        document.getElementById('form-equipo-container').style.display = 'none';
+    }
+
+    // Guardar equipo
+document.addEventListener('DOMContentLoaded', function() {
+        cargarInventario();
+        
+        const formEquipo = document.getElementById('form-equipo');
+        if (formEquipo) {
+            formEquipo.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                
+                const equipoData = {
+                    numero: document.getElementById('equipo-numero').value,
+                    marca: document.getElementById('equipo-marca').value,
+                    modelo: '',
+                    estado: document.getElementById('equipo-estado').value,
+                    ubicacion: document.getElementById('equipo-ubicacion').value,
+                    especificaciones: document.getElementById('equipo-especificaciones').value
+                };
+                
+                try {
+                    const equipoId = document.getElementById('equipo-id').value;
+                    const metodo = equipoId ? 'PUT' : 'POST';
+                    const endpoint = equipoId ? `/equipos/${equipoId}` : '/equipos';
+
+                    await fetchAPI(endpoint, {
+                        method: metodo,
+                        body: JSON.stringify(equipoData)
+                    });
+                    
+                    alert('✅ Equipo guardado correctamente');
+                    cancelarFormularioEquipo();
+                    document.getElementById('equipo-id').value = '';
+                    cargarInventario();
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('❌ Error al guardar el equipo');
+                }
+            });
+        }
+    });
+
+    // Editar equipo
+    async function editarEquipo(id) {
+        try {
+            const equipos = await fetchAPI('/equipos');
+            const equipo = equipos.find(e => e.id === id);
+            
+            if (equipo) {
+                document.getElementById('equipo-id').value = equipo.id;
+                document.getElementById('equipo-numero').value = equipo.numero;
+                document.getElementById('equipo-marca').value = equipo.marca;
+                document.getElementById('equipo-estado').value = equipo.estado;
+                document.getElementById('equipo-ubicacion').value = equipo.ubicacion;
+                document.getElementById('equipo-especificaciones').value = equipo.especificaciones || '';
+                
+                document.getElementById('form-equipo-container').style.display = 'block';
+                document.getElementById('form-equipo-titulo').textContent = '✏️ Editar Equipo';
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Error al cargar el equipo');
+        }
+    }
+
+    // Eliminar equipo
+    async function eliminarEquipo(id) {
+        if (confirm('¿Eliminar este equipo permanentemente?')) {
+            try {
+                await fetchAPI(`/equipos/${id}`, { method: 'DELETE' });
+                alert('✅ Equipo eliminado');
+                cargarInventario();
+            } catch (error) {
+                console.error('Error:', error);
+                alert('❌ Error al eliminar el equipo');
+            }
+        }
+    }
+
+    // Funciones globales
+    window.mostrarFormularioEquipo = mostrarFormularioEquipo;
+    window.cancelarFormularioEquipo = cancelarFormularioEquipo;
+    window.editarEquipo = editarEquipo;
+    window.eliminarEquipo = eliminarEquipo;
+    </script>
+</body>
+</html>

@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIGELAB - Bitácora Digital</title>
+    <link rel="stylesheet" href="css/estilos.css">
+</head>
+<body>
+
+    <header>
+        <h1><i>📚</i> SIGELAB - Bitácora Digital</h1>
+        <nav>
+            <a href="index.html" class="activo">Inicio</a>
+            <a href="login-admin.html">Administrador</a>
+        </nav>
+    </header>
+
+    <main class="inicio-container">
+        <div class="opciones-grid">
+            <!-- Opción: Registrar Acceso -->
+            <div class="opcion-card" onclick="location.href='bitacora.html'">
+                <span class="icono">📝</span>
+                <h3>Registrar Acceso</h3>
+                <p>Registra tu entrada al laboratorio de cómputo</p>
+                <button style="margin-top: 1.5rem;">Comenzar registro</button>
+            </div>
+
+            <!-- Opción: Gestión de Inventario -->
+            <div class="opcion-card" onclick="location.href='inventario.html'">
+                <span class="icono">💻</span>
+                <h3>Gestión de Inventario</h3>
+                <p>Consulta el estado de los equipos disponibles</p>
+                <button style="margin-top: 1.5rem;" class="btn-secundario">Ver equipos</button>
+            </div>
+
+            <!-- Opción: Acceso Administrador -->
+            <div class="opcion-card" onclick="location.href='login-admin.html'">
+                <span class="icono">👨‍💼</span>
+                <h3>Acceso Administrador</h3>
+                <p>Panel de control y reportes</p>
+                <button style="margin-top: 1.5rem;" class="btn-exito">Iniciar sesión</button>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; 2024 SIGELAB - Sistema de Bitácora Digital para Laboratorios</p>
+    </footer>
