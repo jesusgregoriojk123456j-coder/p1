@@ -143,14 +143,18 @@ main {
     display: flex;
     align-items: center;
     justify-content: center;
+    padding: 1rem;
 }
 
 .opciones-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
     gap: 2rem;
     width: 100%;
-    max-width: 1200px;
+    max-width: 960px;
+    justify-items: center;
+    align-items: stretch;
+    margin: 0 auto;
 }
 
 .opcion-card {
@@ -162,6 +166,56 @@ main {
     transition: all 0.3s ease;
     cursor: pointer;
     border: 1px solid rgba(255, 255, 255, 0.2);
+    width: 100%;
+    max-width: 420px;
+    min-height: 420px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.opcion-card p {
+    color: #6b7885;
+    font-size: 1rem;
+    line-height: 1.8;
+    margin: 0 auto 1.5rem;
+    max-width: 90%;
+}
+
+.opcion-card button {
+    margin-top: auto;
+    width: min(240px, 100%);
+}
+
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.95rem 1.9rem;
+    border-radius: 999px;
+    border: none;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform 0.3s ease, box-shadow 0.3s ease, opacity 0.3s ease;
+    box-shadow: 0 14px 24px rgba(102, 126, 234, 0.18);
+}
+
+.btn:hover {
+    transform: translateY(-2px);
+    opacity: 0.95;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.btn-exito {
+    background: var(--color-exito);
+    color: white;
 }
 
 .opcion-card:hover {
@@ -184,6 +238,13 @@ main {
 .opcion-card p {
     color: #7f8c8d;
     font-size: 1.1rem;
+}
+
+@media (max-width: 800px) {
+    .opciones-grid {
+        grid-template-columns: 1fr;
+        max-width: 520px;
+    }
 }
 
 /* === FORMULARIO DE BITÁCORA === */

@@ -36,7 +36,6 @@
                             <option>Personalizado</option>
                         </select>
                     </div>
-                    <button onclick="generarReporte('accesos')" class="btn-exito">📥 Generar PDF</button>
                     <button onclick="exportarExcel('accesos')" class="btn-secundario">📊 Exportar Excel</button>
                 </div>
 
@@ -53,7 +52,6 @@
                             <option>PC-03</option>
                         </select>
                     </div>
-                    <button onclick="generarReporte('equipos')" class="btn-exito">📥 Generar PDF</button>
                     <button onclick="exportarExcel('equipos')" class="btn-secundario">📊 Exportar Excel</button>
                 </div>
 
@@ -64,12 +62,7 @@
                     <div class="form-group">
                         <input type="text" placeholder="Ingresar clase">
                     </div>
-                    <button onclick="generarReporte('estudiante')" class="btn-exito">📥 Generar PDF</button>
                 </div>
-            </div>
-            <div id="reporte-link" style="margin-top: 1.5rem; display: none;
-                background: #eef5ff; padding: 1rem; border-radius: 12px; border: 1px solid #ccd9ff;
-                color: #1f3c88; font-size: 0.95rem;">
             </div>
         </div>
 
@@ -130,10 +123,7 @@
                     throw new Error(errorRes.error || 'Error al generar el reporte');
                 }
 
-                const data = await response.json();
-                const linkContainer = document.getElementById('reporte-link');
-                linkContainer.style.display = 'block';
-                linkContainer.innerHTML = `PDF generado correctamente. <a href="${data.url}" target="_blank" style="color: #0f4dbd; text-decoration: underline;">Abrir reporte</a> o <a href="${data.url}" download style="color: #0f4dbd; text-decoration: underline;">Descargar</a>`;
+                await response.json();
             } catch (error) {
                 alert('❌ ' + error.message);
                 console.error('Error generando reporte:', error);

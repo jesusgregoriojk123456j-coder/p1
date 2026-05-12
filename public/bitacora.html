@@ -109,7 +109,6 @@
         <div class="contenedor">
             <div style="display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;">
                 <h2><i>📊</i> Accesos Recientes</h2>
-                <button onclick="generarPDFBitacora()" class="btn-exito">📥 Generar PDF de Bitácora</button>
             </div>
             <div class="tabla-contenedor">
                 <table>
@@ -135,8 +134,7 @@
         <p>&copy; 2024 SIGELAB - Bitácora Digital</p>
     </footer>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script>
+<script>
     // Configuración de la API
     window.API_URL = '/api';
 
@@ -346,56 +344,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    async function generarPDFBitacora() {
-        try {
-            const registros = await fetchAPI('/bitacora?limite=100');
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF({ unit: 'pt', format: 'letter' });
-            const margin = 40;
-            let y = 50;
-
-            doc.setFontSize(16);
-            doc.text('Reporte de Bitácora Única', margin, y);
-            y += 24;
-            doc.setFontSize(10);
-            doc.text(`Fecha de generación: ${new Date().toLocaleString('es-MX')}`, margin, y);
-            y += 24;
-
-            const headers = ['Hora', 'Equipo', 'Nombre', 'Tipo', 'Clase', 'Propósito', 'Observaciones'];
-            doc.setFontSize(10);
-            doc.text(headers.join(' | '), margin, y);
-            y += 14;
-            doc.setLineWidth(0.5);
-            doc.line(margin, y, 555, y);
-            y += 18;
-
-            registros.forEach(reg => {
-                if (y > 740) {
-                    doc.addPage();
-                    y = 50;
-                }
-
-                const line = [
-                    reg.hora || '-',
-                    reg.equipo_numero || '-',
-                    reg.usuario_nombre || '-',
-                    reg.tipo_usuario === 'estudiante' ? 'Estudiante' : 'Externo',
-                    reg.clase_nombre || '-',
-                    reg.proposito || '-',
-                    reg.observaciones || '-'
-                ].join(' | ');
-
-                const splitText = doc.splitTextToSize(line, 520);
-                doc.text(splitText, margin, y);
-                y += 14 * splitText.length;
-            });
-
-            doc.save(`bitacora_${new Date().toISOString().slice(0, 10)}.pdf`);
-        } catch (error) {
-            console.error('Error generando PDF:', error);
-            alert('❌ No se pudo generar el PDF de la bitácora');
-        }
-    }
     </script>
 </body>
 </html>
