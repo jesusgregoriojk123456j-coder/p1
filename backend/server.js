@@ -1,4 +1,8 @@
 
+// Importar Logger
+const Logger = require('./utils/logger');
+
+
 const express = require('express');
 const cors = require('cors');
 const fs = require('fs');
@@ -8,6 +12,11 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const pool = require('./config/db');
 const { scrypt } = require('crypto');
+
+const app = express();
+
+// ✅ IMPORTANTE: Confiar en el proxy para obtener IPs reales
+app.set('trust proxy', true);
 
 async function initializeDatabase() {
     await pool.query(`
@@ -68,10 +77,10 @@ initializeDatabase().catch(error => {
     process.exit(1);
 });
 
-const app = express();
-const PORT = process.env.PORT || 3000;
+
+const PORT = process.env.PORT || 3001;
 const JWT_SECRET = process.env.JWT_SECRET || 'sigelab_secret_key_2024';
-const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3001';
 
 const REPORTS_FOLDER = path.join(__dirname, '..', 'reports');
 if (!fs.existsSync(REPORTS_FOLDER)) {
@@ -79,7 +88,7 @@ if (!fs.existsSync(REPORTS_FOLDER)) {
 }
 
 app.use(cors({
-    origin: [FRONTEND_URL, 'http://localhost:3000', 'http://localhost:5173'],
+    origin: [FRONTEND_URL, 'http://localhost:3001', 'http://localhost:5173'],
     credentials: true
 }));
 app.use(express.json());
@@ -231,12 +240,21 @@ app.delete('/api/equipos/:id', verificarToken, async (req, res) => {
 });
 
 app.post('/api/bitacora', async (req, res) => {
+    // INICIO: Registrar inicio de la acción
+    const inicio = await Logger.logInicio(req, 'bitacora_registrar', {
+        datos: req.body
+    });
+    
     const { equipo_numero, usuario_nombre, tipo_usuario, clase_id, tipo_registro, proposito, observaciones } = req.body;
 
     try {
         const equipo = await pool.query('SELECT id FROM equipos WHERE numero = $1', [equipo_numero]);
 
         if (equipo.rows.length === 0) {
+            // Registrar error: equipo no encontrado
+            await Logger.logError(req, 'bitacora_registrar', 'Equipo no encontrado', {
+                equipo_numero: equipo_numero
+            }, inicio);
             return res.status(404).json({ error: 'Equipo no encontrado' });
         }
 
@@ -250,14 +268,32 @@ app.post('/api/bitacora', async (req, res) => {
             [equipo.rows[0].id, usuario_nombre, tipo_usuario, clase_id, tipo_registro, proposito, observaciones, fecha, hora]
         );
 
+        // ÉXITO: Registrar operación exitosa
+        await Logger.logExito(req, 'bitacora_registrar', {
+            bitacora_id: result.rows[0].id,
+            equipo: equipo_numero,
+            usuario: usuario_nombre,
+            tipo_usuario: tipo_usuario
+        }, inicio);
+
         res.json(result.rows[0]);
+        
     } catch (error) {
         console.error(error);
+        // ERROR: Registrar el error
+        await Logger.logError(req, 'bitacora_registrar', error.message, {
+            datos: req.body
+        }, inicio);
         res.status(500).json({ error: error.message });
     }
 });
 
 app.get('/api/bitacora', async (req, res) => {
+    // Registrar consulta (no es necesario medir tiempo, pero sí registrar la acción)
+    await Logger.log(req, 'bitacora_consultar', {
+        filtros: req.query
+    }, 'exito');
+    
     const { fecha, tipo_usuario, busqueda, limite = 50 } = req.query;
 
     let query = `
@@ -294,11 +330,17 @@ app.get('/api/bitacora', async (req, res) => {
         const result = await pool.query(query, params);
         res.json(result.rows);
     } catch (error) {
+        await Logger.logError(req, 'bitacora_consultar', error.message, {
+            filtros: req.query
+        });
         res.status(500).json({ error: error.message });
     }
 });
 
 app.get('/api/bitacora/recientes', async (req, res) => {
+    // Registrar consulta de accesos recientes
+    await Logger.log(req, 'bitacora_recientes', {}, 'exito');
+    
     try {
         const result = await pool.query(`
             SELECT b.*, e.numero as equipo_numero, c.nombre as clase_nombre
@@ -310,6 +352,7 @@ app.get('/api/bitacora/recientes', async (req, res) => {
         `);
         res.json(result.rows);
     } catch (error) {
+        await Logger.logError(req, 'bitacora_recientes', error.message);
         res.status(500).json({ error: error.message });
     }
 });
@@ -447,6 +490,7 @@ app.delete('/api/bitacora/:id', verificarToken, async (req, res) => {
     }
 });
 
+
 app.get('/api/clases', async (req, res) => {
     try {
         const result = await pool.query('SELECT * FROM clases ORDER BY grado, grupo');
@@ -558,8 +602,23 @@ app.post('/api/mantenimientos', verificarToken, async (req, res) => {
     }
 });
 
+// Ruta de prueba para verificar el Logger
+app.get('/api/test-logger', async (req, res) => {
+    console.log('Probando Logger...');
+    
+    try {
+        await Logger.log(req, 'test_logger', { mensaje: 'Prueba manual' }, 'exito');
+        console.log('Log guardado exitosamente');
+        res.json({ success: true, message: 'Log creado' });
+    } catch (error) {
+        console.error('Error al guardar log:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 app.listen(PORT, () => {
     console.log(`Servidor corriendo en puerto ${PORT}`);
     console.log(`Frontend esperado en: ${FRONTEND_URL}`);
     console.log(`Ambiente: ${process.env.NODE_ENV || 'desarrollo'}`);
 });
+
