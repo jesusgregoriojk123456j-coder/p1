@@ -1,10 +1,10 @@
 // backend/utils/logger.js
 
-// ✅ Usar la misma conexión que server.js
+//
 const pool = require('../config/db');
 
 /**
- * Obtiene la IP real del cliente, incluso detrás de proxies
+ *  IP 
  */
 const getClientIp = (req) => {
     // Prioridad: x-forwarded-for (cuando hay proxy/balanceador)
@@ -39,7 +39,7 @@ class Logger {
                 rol_usuario = req.session.usuario.rol_nombre;
             }
             
-            // ✅ Obtener IP real del cliente
+            //IP 
             const ip_address = getClientIp(req);
             
             // Limpiar parámetros sensibles

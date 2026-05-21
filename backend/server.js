@@ -616,6 +616,70 @@ app.get('/api/test-logger', async (req, res) => {
     }
 });
 
+// =====================================================
+// RUTA PARA CREAR RESPALDOS DE BASE DE DATOS
+// =====================================================
+
+app.post('/api/respaldo/crear', verificarToken, async (req, res) => {
+    // Solo administrador puede crear respaldos
+    if (req.rol !== 'admin') {
+        await Logger.logDenegado(req, 'respaldo_crear', { rol: req.rol });
+        return res.status(403).json({ error: 'No autorizado. Solo administradores pueden crear respaldos.' });
+    }
+
+    const { exec } = require('child_process');
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const filename = `sigelab_backup_${timestamp}.sql`;
+    const backupDir = 'C:/Backups/SIGELAB/';
+    const backupPath = `${backupDir}${filename}`;
+
+    // Crear
+    if (!fs.existsSync(backupDir)) {
+        fs.mkdirSync(backupDir, { recursive: true });
+    }
+
+    // Registrar inicio del respaldo
+    const inicio = await Logger.logInicio(req, 'respaldo_crear', {
+        archivo: filename,
+        ruta: backupPath
+    });
+
+    // Ejecutar pg_dump
+    exec(`pg_dump -U postgres -d sigelab_db > "${backupPath}"`, async (error, stdout, stderr) => {
+        if (error) {
+            // Registrar error
+            await Logger.logError(req, 'respaldo_crear', error.message, {
+                archivo: filename,
+                error: stderr
+            }, inicio);
+            return res.status(500).json({ 
+                success: false, 
+                error: 'Error al crear el respaldo: ' + error.message 
+            });
+        }
+
+        // Obtener tamaño del archivo
+        const stats = fs.statSync(backupPath);
+        const tamañoMB = (stats.size / 1024 / 1024).toFixed(2);
+
+        // Registrar éxito
+        await Logger.logExito(req, 'respaldo_crear', {
+            archivo: filename,
+            ruta: backupPath,
+            tamaño_mb: tamañoMB
+        }, inicio);
+
+        res.json({ 
+            success: true, 
+            message: 'Respaldo creado exitosamente',
+            archivo: filename,
+            ruta: backupPath,
+            tamaño_mb: tamañoMB,
+            fecha: new Date().toLocaleString('es-MX')
+        });
+    });
+});
+
 app.listen(PORT, () => {
     console.log(`Servidor corriendo en puerto ${PORT}`);
     console.log(`Frontend esperado en: ${FRONTEND_URL}`);
