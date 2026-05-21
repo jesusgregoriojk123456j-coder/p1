@@ -617,67 +617,87 @@ app.get('/api/test-logger', async (req, res) => {
 });
 
 // =====================================================
-// RUTA PARA CREAR RESPALDOS DE BASE DE DATOS
+// RUTA PARA CREAR RESPALDOS (Versión para Render/Nube)
 // =====================================================
 
 app.post('/api/respaldo/crear', verificarToken, async (req, res) => {
-    // Solo administrador puede crear respaldos
     if (req.rol !== 'admin') {
         await Logger.logDenegado(req, 'respaldo_crear', { rol: req.rol });
-        return res.status(403).json({ error: 'No autorizado. Solo administradores pueden crear respaldos.' });
+        return res.status(403).json({ error: 'No autorizado' });
     }
 
-    const { exec } = require('child_process');
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const filename = `sigelab_backup_${timestamp}.sql`;
-    const backupDir = 'C:/Backups/SIGELAB/';
+    const backupDir = '/tmp/'; // Directorio temporal en Render
     const backupPath = `${backupDir}${filename}`;
 
-    // Crear
-    if (!fs.existsSync(backupDir)) {
-        fs.mkdirSync(backupDir, { recursive: true });
-    }
+    const fs = require('fs');
 
-    // Registrar inicio del respaldo
-    const inicio = await Logger.logInicio(req, 'respaldo_crear', {
-        archivo: filename,
-        ruta: backupPath
-    });
+    try {
+        // 1. Exportar esquema y datos de cada tabla
+        const tablas = ['usuarios', 'roles', 'permisos', 'roles_permisos', 'equipos', 'bitacora', 'mantenimientos', 'clases', 'logs'];
+        
+        let sqlContent = '-- =====================================================\n';
+        sqlContent += '-- RESPALDO DE BASE DE DATOS SIGELAB\n';
+        sqlContent += `-- Fecha: ${new Date().toLocaleString('es-MX')}\n`;
+        sqlContent += '-- =====================================================\n\n';
 
-    // Ejecutar pg_dump
-    exec(`pg_dump -U postgres -d sigelab_db > "${backupPath}"`, async (error, stdout, stderr) => {
-        if (error) {
-            // Registrar error
-            await Logger.logError(req, 'respaldo_crear', error.message, {
-                archivo: filename,
-                error: stderr
-            }, inicio);
-            return res.status(500).json({ 
-                success: false, 
-                error: 'Error al crear el respaldo: ' + error.message 
-            });
+        for (const tabla of tablas) {
+            // Obtener estructura de la tabla
+            const estructura = await pool.query(`
+                SELECT 
+                    'CREATE TABLE IF NOT EXISTS ' || table_name || ' (' || 
+                    string_agg(column_name || ' ' || data_type || 
+                    CASE WHEN is_nullable = 'NO' THEN ' NOT NULL' ELSE '' END, ', ') || 
+                    ');' as sql
+                FROM information_schema.columns 
+                WHERE table_name = $1 
+                GROUP BY table_name
+            `, [tabla]);
+            
+            if (estructura.rows.length > 0) {
+                sqlContent += estructura.rows[0].sql + '\n\n';
+            }
+            
+            // Obtener datos de la tabla
+            const datos = await pool.query(`SELECT * FROM ${tabla}`);
+            if (datos.rows.length > 0) {
+                sqlContent += `-- Datos de tabla ${tabla}\n`;
+                datos.rows.forEach(row => {
+                    const valores = Object.values(row).map(v => {
+                        if (v === null) return 'NULL';
+                        if (typeof v === 'string') return `'${v.replace(/'/g, "''")}'`;
+                        if (typeof v === 'object') return `'${JSON.stringify(v).replace(/'/g, "''")}'`;
+                        return v;
+                    });
+                    sqlContent += `INSERT INTO ${tabla} VALUES (${valores.join(', ')});\n`;
+                });
+                sqlContent += '\n';
+            }
         }
-
-        // Obtener tamaño del archivo
+        
+        // Guardar archivo
+        fs.writeFileSync(backupPath, sqlContent);
+        
+        // Obtener tamaño
         const stats = fs.statSync(backupPath);
         const tamañoMB = (stats.size / 1024 / 1024).toFixed(2);
-
+        
         // Registrar éxito
         await Logger.logExito(req, 'respaldo_crear', {
             archivo: filename,
-            ruta: backupPath,
             tamaño_mb: tamañoMB
-        }, inicio);
-
-        res.json({ 
-            success: true, 
-            message: 'Respaldo creado exitosamente',
-            archivo: filename,
-            ruta: backupPath,
-            tamaño_mb: tamañoMB,
-            fecha: new Date().toLocaleString('es-MX')
         });
-    });
+        
+        // Enviar archivo como descarga
+        res.setHeader('Content-Type', 'application/sql');
+        res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
+        res.send(sqlContent);
+        
+    } catch (error) {
+        await Logger.logError(req, 'respaldo_crear', error.message);
+        res.status(500).json({ error: error.message });
+    }
 });
 
 app.listen(PORT, () => {
