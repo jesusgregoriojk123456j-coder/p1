@@ -80,7 +80,7 @@ initializeDatabase().catch(error => {
 
 const PORT = process.env.PORT || 3001;
 const JWT_SECRET = process.env.JWT_SECRET || 'sigelab_secret_key_2024';
-const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3001';
+const FRONTEND_URL = process.env.FRONTEND_URL || 'https://p1-4-neom.onrender.com';
 
 const REPORTS_FOLDER = path.join(__dirname, '..', 'reports');
 if (!fs.existsSync(REPORTS_FOLDER)) {
@@ -88,7 +88,7 @@ if (!fs.existsSync(REPORTS_FOLDER)) {
 }
 
 app.use(cors({
-    origin: [FRONTEND_URL, 'http://localhost:3001', 'http://localhost:5173'],
+    origin: [FRONTEND_URL, 'https://p1-4-neom.onrender.com', 'https://p1-4-neom.onrender.com'],
     credentials: true
 }));
 app.use(express.json());
@@ -616,9 +616,9 @@ app.get('/api/test-logger', async (req, res) => {
     }
 });
 
-// =====================================================
-// RUTA PARA CREAR RESPALDOS (Versión para Render/Nube)
-// =====================================================
+
+//Render
+
 
 app.post('/api/respaldo/crear', verificarToken, async (req, res) => {
     if (req.rol !== 'admin') {
