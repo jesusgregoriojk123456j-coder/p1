@@ -1,9 +1,8 @@
 /**
  * Configuration handler for API URL
- * Detects environment and sets the correct API endpoint
  */
-
 (function() {
-    window.API_URL = '/api';
+    // URL del backend en Render
+    window.API_URL = 'https://sigelab-backend.onrender.com/api';
     console.log('API URL configurada como:', window.API_URL);
 })();
