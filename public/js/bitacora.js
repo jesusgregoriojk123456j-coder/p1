@@ -28,150 +28,232 @@ function seleccionarTipo(tipo) {
     tipoUsuarioSeleccionado = tipo;
     
     // Actualizar UI
-    document.getElementById('tipo-estudiante').classList.remove('seleccionado');
-    document.getElementById('tipo-externo').classList.remove('seleccionado');
+    const tipoEstudiante = document.getElementById('tipo-estudiante');
+    const tipoExterno = document.getElementById('tipo-externo');
+    if (tipoEstudiante) tipoEstudiante.classList.remove('seleccionado');
+    if (tipoExterno) tipoExterno.classList.remove('seleccionado');
     
     if (tipo === 'estudiante') {
-        document.getElementById('tipo-estudiante').classList.add('seleccionado');
-        document.getElementById('campo-clase').style.display = 'block';
-        document.getElementById('clase').required = true;
+        if (tipoEstudiante) tipoEstudiante.classList.add('seleccionado');
+        const campoClase = document.getElementById('campo-clase');
+        if (campoClase) campoClase.style.display = 'block';
+        const claseInput = document.getElementById('clase');
+        if (claseInput) claseInput.required = true;
         cargarClases();
     } else {
-        document.getElementById('tipo-externo').classList.add('seleccionado');
-        document.getElementById('campo-clase').style.display = 'none';
-        document.getElementById('clase').required = false;
-        document.getElementById('clase').value = '';
+        if (tipoExterno) tipoExterno.classList.add('seleccionado');
+        const campoClase = document.getElementById('campo-clase');
+        if (campoClase) campoClase.style.display = 'none';
+        const claseInput = document.getElementById('clase');
+        if (claseInput) {
+            claseInput.required = false;
+            claseInput.value = '';
+        }
     }
     
-    document.getElementById('tipo_usuario').value = tipo;
+    const tipoUsuarioInput = document.getElementById('tipo_usuario');
+    if (tipoUsuarioInput) tipoUsuarioInput.value = tipo;
 }
 
-// Cargar registros recientes
-function cargarRegistrosRecientes() {
-    const registros = JSON.parse(localStorage.getItem('bitacora_registros')) || [];
-    const tbody = document.getElementById('registros-recientes');
-    
-    if (tbody) {
-        const ultimosRegistros = registros.slice(-5).reverse();
-        tbody.innerHTML = ultimosRegistros.map(registro => `
-            <tr>
-                <td>${registro.hora}</td>
-                <td>${registro.computadora}</td>
-                <td>${registro.nombre}</td>
-                <td>${registro.tipo_usuario === 'estudiante' ? '👨‍🎓 Estudiante' : '👤 Externo'}</td>
-                <td>${obtenerNombreClase(registro.clase)}</td>
-                <td>${registro.proposito}</td>
-            </tr>
-        `).join('');
+// Cargar registros recientes desde el backend
+async function cargarRegistrosRecientes() {
+    try {
+        const response = await fetch(`${API_URL}/bitacora/recientes`);
+        const registros = await response.json();
+        
+        const tbody = document.getElementById('registros-recientes');
+        if (tbody) {
+            tbody.innerHTML = registros.map(registro => `
+                <tr>
+                    <td>${registro.hora || '-'}</td>
+                    <td>${registro.equipo_numero || '-'}</td>
+                    <td>${registro.usuario_nombre || '-'}</td>
+                    <td>${registro.tipo_usuario === 'estudiante' ? '👨‍🎓 Estudiante' : '👤 Externo'}</td>
+                    <td>${registro.clase_nombre || '-'}</td>
+                    <td>${registro.proposito || '-'}</td>
+                </tr>
+            `).join('');
+        }
+    } catch (error) {
+        console.error('Error cargando registros recientes:', error);
+    }
+}
+
+// Cargar lista de equipos desde el backend
+async function cargarEquipos() {
+    try {
+        const response = await fetch(`${API_URL}/equipos`);
+        const equipos = await response.json();
+        
+        const selectComputadora = document.getElementById('computadora');
+        if (selectComputadora) {
+            // Filtrar solo equipos disponibles
+            const equiposDisponibles = equipos.filter(e => e.estado === 'disponible');
+            
+            selectComputadora.innerHTML = '<option value="">Selecciona una computadora</option>';
+            equiposDisponibles.forEach(equipo => {
+                const option = document.createElement('option');
+                option.value = equipo.numero;
+                option.textContent = `${equipo.numero} - ${equipo.marca || 'Sin marca'} (${equipo.estado})`;
+                selectComputadora.appendChild(option);
+            });
+        }
+    } catch (error) {
+        console.error('Error cargando equipos:', error);
+    }
+}
+
+// Cargar clases desde el backend
+async function cargarClases() {
+    try {
+        const response = await fetch(`${API_URL}/clases`);
+        const clases = await response.json();
+        
+        const selectClase = document.getElementById('clase');
+        if (selectClase) {
+            selectClase.innerHTML = '<option value="">Selecciona tu clase</option>';
+            clases.forEach(clase => {
+                const option = document.createElement('option');
+                option.value = clase.id;
+                option.textContent = `${clase.nombre} (${clase.codigo}) - ${clase.grado}°${clase.grupo}`;
+                selectClase.appendChild(option);
+            });
+        }
+    } catch (error) {
+        console.error('Error cargando clases:', error);
     }
 }
 
 // Manejar envío del formulario
 document.addEventListener('DOMContentLoaded', function() {
     actualizarFechaHora();
+    cargarEquipos();
     cargarRegistrosRecientes();
+    cargarClases();
     
     const form = document.getElementById('form-bitacora');
     if (form) {
-        form.addEventListener('submit', function(e) {
+        form.addEventListener('submit', async function(e) {
             e.preventDefault();
             
             if (!tipoUsuarioSeleccionado) {
-                alert('Por favor selecciona el tipo de usuario');
+                mostrarMensaje('⚠️ Por favor selecciona el tipo de usuario', 'error');
                 return;
             }
             
-            const registro = {
-                id: Date.now(),
-                fecha: new Date().toLocaleDateString('es-MX'),
-                hora: new Date().toLocaleTimeString('es-MX'),
-                computadora: document.getElementById('computadora').value,
-                nombre: document.getElementById('nombre').value,
+            const computadora = document.getElementById('computadora').value;
+            if (!computadora) {
+                mostrarMensaje('⚠️ Por favor selecciona una computadora', 'error');
+                return;
+            }
+            
+            const nombre = document.getElementById('nombre').value;
+            if (!nombre) {
+                mostrarMensaje('⚠️ Por favor ingresa tu nombre completo', 'error');
+                return;
+            }
+            
+            const proposito = document.getElementById('proposito').value;
+            if (!proposito) {
+                mostrarMensaje('⚠️ Por favor selecciona el propósito', 'error');
+                return;
+            }
+            
+            const datos = {
+                equipo_numero: computadora,
+                usuario_nombre: nombre,
                 tipo_usuario: tipoUsuarioSeleccionado,
-                clase: document.getElementById('clase').value || '',
-                tipo_registro: document.getElementById('tipo_registro').value,
-                proposito: document.getElementById('proposito').value,
-                observaciones: document.getElementById('observaciones').value,
-                timestamp: new Date().toISOString()
+                clase_id: document.getElementById('clase').value || null,
+                tipo_registro: 'entrada',
+                proposito: proposito,
+                observaciones: document.getElementById('observaciones').value || ''
             };
             
-            // Guardar en localStorage
-            const registros = JSON.parse(localStorage.getItem('bitacora_registros')) || [];
-            registros.push(registro);
-            localStorage.setItem('bitacora_registros', JSON.stringify(registros));
-            
-            // Actualizar estado de la computadora
-            actualizarEstadoComputadora(registro.computadora, registro.tipo_registro);
-            
-            // Mostrar mensaje de éxito
-            mostrarMensaje('✅ Acceso registrado correctamente', 'exito');
-            
-            // Limpiar formulario
-            form.reset();
-            tipoUsuarioSeleccionado = '';
-            document.getElementById('tipo-estudiante').classList.remove('seleccionado');
-            document.getElementById('tipo-externo').classList.remove('seleccionado');
-            document.getElementById('campo-matricula').style.display = 'none';
-            
-            // Recargar registros recientes
-            cargarRegistrosRecientes();
+            try {
+                const response = await fetch(`${API_URL}/bitacora`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(datos)
+                });
+                
+                if (response.ok) {
+                    mostrarMensaje('✅ Acceso registrado correctamente', 'exito');
+                    
+                    // Limpiar formulario
+                    form.reset();
+                    tipoUsuarioSeleccionado = '';
+                    const tipoEstudiante = document.getElementById('tipo-estudiante');
+                    const tipoExterno = document.getElementById('tipo-externo');
+                    if (tipoEstudiante) tipoEstudiante.classList.remove('seleccionado');
+                    if (tipoExterno) tipoExterno.classList.remove('seleccionado');
+                    const campoClase = document.getElementById('campo-clase');
+                    if (campoClase) campoClase.style.display = 'none';
+                    
+                    // Recargar datos
+                    cargarEquipos();
+                    cargarRegistrosRecientes();
+                } else {
+                    const error = await response.json();
+                    mostrarMensaje(`❌ Error: ${error.error}`, 'error');
+                }
+            } catch (error) {
+                console.error('Error al registrar acceso:', error);
+                mostrarMensaje('❌ Error de conexión con el servidor', 'error');
+            }
         });
     }
 });
 
-// Actualizar estado de computadora
-function actualizarEstadoComputadora(computadora, tipoRegistro) {
-    const equipos = JSON.parse(localStorage.getItem('equipos')) || [
-        { id: 'PC-01', numero: 'PC-01', estado: 'disponible' },
-        { id: 'PC-02', numero: 'PC-02', estado: 'disponible' },
-        { id: 'PC-03', numero: 'PC-03', estado: 'disponible' },
-        { id: 'PC-04', numero: 'PC-04', estado: 'disponible' },
-        { id: 'PC-05', numero: 'PC-05', estado: 'disponible' },
-        { id: 'PC-06', numero: 'PC-06', estado: 'disponible' }
-    ];
-    
-    const equipoIndex = equipos.findIndex(e => e.numero === computadora);
-    if (equipoIndex !== -1) {
-        if (tipoRegistro === 'entrada') {
-            equipos[equipoIndex].estado = 'uso';
-        } else {
-            equipos[equipoIndex].estado = 'disponible';
-        }
-        localStorage.setItem('equipos', JSON.stringify(equipos));
-    }
-}
-
-function cargarClases() {
-    const clases = JSON.parse(localStorage.getItem('clases')) || [];
-    const selectClase = document.getElementById('clase');
-    
-    if (selectClase) {
-        // Mantener la opción por defecto
-        selectClase.innerHTML = '<option value="">Selecciona tu clase</option>';
-        
-        clases.forEach(clase => {
-            const option = document.createElement('option');
-            option.value = clase.codigo; // Guardar el código
-            option.textContent = `${clase.nombre} (${clase.codigo})`; // Mostrar nombre y código
-            selectClase.appendChild(option);
-        });
-    }
-}
-
-// Función para obtener el nombre de la clase por código
-function obtenerNombreClase(codigo) {
-    const clases = JSON.parse(localStorage.getItem('clases')) || [];
-    const clase = clases.find(c => c.codigo === codigo);
-    return clase ? `${clase.nombre} (${clase.codigo})` : codigo || '-';
-}
-
+// Función para mostrar mensajes flotantes
 function mostrarMensaje(texto, tipo) {
     const mensaje = document.createElement('div');
     mensaje.className = `mensaje-flotante mensaje-${tipo}`;
     mensaje.textContent = texto;
+    mensaje.style.cssText = `
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        padding: 12px 20px;
+        border-radius: 8px;
+        color: white;
+        z-index: 9999;
+        font-size: 14px;
+        animation: slideIn 0.3s ease-out;
+    `;
+    
+    if (tipo === 'exito') {
+        mensaje.style.backgroundColor = '#28a745';
+    } else if (tipo === 'error') {
+        mensaje.style.backgroundColor = '#dc3545';
+    } else {
+        mensaje.style.backgroundColor = '#ffc107';
+        mensaje.style.color = '#333';
+    }
+    
     document.body.appendChild(mensaje);
     
     setTimeout(() => {
         mensaje.remove();
     }, 3000);
+}
+
+// Agregar estilos para la animación si no existen
+if (!document.querySelector('#mensaje-estilos')) {
+    const style = document.createElement('style');
+    style.id = 'mensaje-estilos';
+    style.textContent = `
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+    `;
+    document.head.appendChild(style);
 }
