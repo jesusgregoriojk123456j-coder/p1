@@ -135,8 +135,20 @@
     </footer>
 
 <script>
-    // Configuración de la API
-    window.API_URL = '/api';
+    // =====================================================
+    // CONFIGURACIÓN DE API_URL
+    // =====================================================
+    const isLocal = window.location.hostname === 'localhost' || 
+                    window.location.hostname === '127.0.0.1';
+    
+    if (isLocal) {
+        window.API_URL = 'http://localhost:3001/api';
+    } else {
+        window.API_URL = 'https://sigelab-backend.onrender.com/api';
+    }
+    
+    console.log('🌐 API_URL configurada:', window.API_URL);
+    console.log('📍 Hostname:', window.location.hostname);
 
     // Función para peticiones a la API
     async function fetchAPI(endpoint, options = {}) {
@@ -200,21 +212,31 @@
     function seleccionarTipo(tipo) {
         tipoUsuarioSeleccionado = tipo;
         
-        document.getElementById('tipo-estudiante').classList.remove('seleccionado');
-        document.getElementById('tipo-externo').classList.remove('seleccionado');
+        const tipoEstudiante = document.getElementById('tipo-estudiante');
+        const tipoExterno = document.getElementById('tipo-externo');
+        if (tipoEstudiante) tipoEstudiante.classList.remove('seleccionado');
+        if (tipoExterno) tipoExterno.classList.remove('seleccionado');
         
         if (tipo === 'estudiante') {
-            document.getElementById('tipo-estudiante').classList.add('seleccionado');
-            document.getElementById('campo-clase').style.display = 'block';
-            document.getElementById('clase').required = true;
+            if (tipoEstudiante) tipoEstudiante.classList.add('seleccionado');
+            const campoClase = document.getElementById('campo-clase');
+            if (campoClase) campoClase.style.display = 'block';
+            const claseInput = document.getElementById('clase');
+            if (claseInput) claseInput.required = true;
             cargarClases();
         } else {
-            document.getElementById('tipo-externo').classList.add('seleccionado');
-            document.getElementById('campo-clase').style.display = 'none';
-            document.getElementById('clase').required = false;
+            if (tipoExterno) tipoExterno.classList.add('seleccionado');
+            const campoClase = document.getElementById('campo-clase');
+            if (campoClase) campoClase.style.display = 'none';
+            const claseInput = document.getElementById('clase');
+            if (claseInput) {
+                claseInput.required = false;
+                claseInput.value = '';
+            }
         }
         
-        document.getElementById('tipo_usuario').value = tipo;
+        const tipoUsuarioInput = document.getElementById('tipo_usuario');
+        if (tipoUsuarioInput) tipoUsuarioInput.value = tipo;
     }
 
     // Cargar clases desde la BD
@@ -267,24 +289,33 @@
             const tbody = document.getElementById('registros-recientes');
             
             if (tbody) {
-                tbody.innerHTML = registros.map(reg => `
-                    <tr>
-                        <td>${reg.hora}</td>
-                        <td>${reg.equipo_numero}</td>
-                        <td>${reg.usuario_nombre}</td>
-                        <td>${reg.tipo_usuario === 'estudiante' ? '👨‍🎓 Estudiante' : '👤 Externo'}</td>
-                        <td>${reg.clase_nombre || '-'}</td>
-                        <td>${reg.proposito}</td>
-                    </tr>
-                `).join('');
+                if (registros.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center">No hay registros recientes</td><tr>';
+                } else {
+                    tbody.innerHTML = registros.map(reg => `
+                        <tr>
+                            <td>${reg.hora || '-'}</td>
+                            <td>${reg.equipo_numero || '-'}</td>
+                            <td>${reg.usuario_nombre || '-'}</td>
+                            <td>${reg.tipo_usuario === 'estudiante' ? '👨‍🎓 Estudiante' : '👤 Externo'}</td>
+                            <td>${reg.clase_nombre || '-'}</td>
+                            <td>${reg.proposito || '-'}</td>
+                        </tr>
+                    `).join('');
+                }
             }
         } catch (error) {
             console.error('Error cargando registros:', error);
+            const tbody = document.getElementById('registros-recientes');
+            if (tbody) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:red">Error al cargar registros</td><tr>';
+            }
         }
     }
 
     // Registrar acceso
-document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('🚀 Bitácora inicializada');
         actualizarFechaHora();
         cargarEquipos();
         cargarRegistrosRecientes();
@@ -319,31 +350,38 @@ document.addEventListener('DOMContentLoaded', function() {
                     observaciones
                 );
 
+                console.log('📤 Enviando registro:', nuevoRegistro.toPayload());
+                console.log('📡 A la URL:', `${window.API_URL}/bitacora`);
+
                 try {
-                    await fetchAPI('/bitacora', {
+                    const resultado = await fetchAPI('/bitacora', {
                         method: 'POST',
                         body: JSON.stringify(nuevoRegistro.toPayload())
                     });
                     
+                    console.log('✅ Respuesta:', resultado);
                     alert('✅ Acceso registrado correctamente');
+                    
                     form.reset();
                     tipoUsuarioSeleccionado = '';
-                    document.getElementById('tipo-estudiante').classList.remove('seleccionado');
-                    document.getElementById('tipo-externo').classList.remove('seleccionado');
-                    document.getElementById('campo-clase').style.display = 'none';
+                    const tipoEstudiante = document.getElementById('tipo-estudiante');
+                    const tipoExterno = document.getElementById('tipo-externo');
+                    if (tipoEstudiante) tipoEstudiante.classList.remove('seleccionado');
+                    if (tipoExterno) tipoExterno.classList.remove('seleccionado');
+                    const campoClase = document.getElementById('campo-clase');
+                    if (campoClase) campoClase.style.display = 'none';
                     
                     // Recargar datos
                     cargarEquipos();
                     cargarRegistrosRecientes();
                     
                 } catch (error) {
-                    console.error('Error:', error);
-                    alert('❌ Error al registrar el acceso');
+                    console.error('❌ Error:', error);
+                    alert('❌ Error al registrar el acceso: ' + error.message);
                 }
             });
         }
     });
-
-    </script>
+</script>
 </body>
 </html>
