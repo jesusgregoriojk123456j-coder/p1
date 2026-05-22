@@ -163,9 +163,20 @@
         <p>&copy; 2024 SIGELAB - Panel Administrativo</p>
     </footer>
 
-    <script>
-    // Configuración de la API
-    window.API_URL = '/api';
+<script>
+    // =====================================================
+    // CONFIGURACIÓN DE API_URL
+    // =====================================================
+    const isLocal = window.location.hostname === 'localhost' || 
+                    window.location.hostname === '127.0.0.1';
+    
+    if (isLocal) {
+        window.API_URL = 'http://localhost:3001/api';
+    } else {
+        window.API_URL = 'https://sigelab-backend.onrender.com/api';
+    }
+    
+    console.log('🌐 API_URL configurada:', window.API_URL);
 
     // Función para peticiones a la API
     async function fetchAPI(endpoint, options = {}) {
@@ -204,193 +215,96 @@
         }
     });
 
-    // Cargar estadísticas del dashboard
-    async function cargarDashboard() {
-        try {
-            const stats = await fetchAPI('/stats/dashboard');
-            document.getElementById('stats-hoy').textContent = stats.accesos_hoy || 0;
-            document.getElementById('stats-uso').textContent = stats.equipos_uso || 0;
-            document.getElementById('stats-total').textContent = stats.total_registros || 0;
-        } catch (error) {
-            console.error('Error cargando dashboard:', error);
-        }
-    }
+    // ... (el resto de tus funciones: cargarDashboard, cargarBitacora, etc.)
 
-    // Cargar bitácora
-    async function cargarBitacora() {
+    // =====================================================
+    // FUNCIÓN DE RESPALDO CORREGIDA
+    // =====================================================
+    async function crearRespaldo() {
+        mostrarMensaje('⏳ Creando respaldo... Por favor espere.', 'info');
+        
         try {
-            const registros = await fetchAPI('/bitacora?limite=50');
-            const tbody = document.getElementById('tabla-bitacora');
+            const token = localStorage.getItem('token');
             
-            if (tbody) {
-                tbody.innerHTML = registros.map(reg => `
-                    <tr>
-                        <td>${reg.fecha} ${reg.hora}</td>
-                        <td>${reg.equipo_numero}</td>
-                        <td>${reg.usuario_nombre}</td>
-                        <td>${reg.tipo_usuario === 'estudiante' ? '👨‍🎓 Estudiante' : '👤 Externo'}</td>
-                        <td>${reg.clase_nombre || '-'}</td>
-                        <td>${reg.proposito}</td>
-                        <td>
-                            <button onclick="eliminarRegistro(${reg.id})" class="btn-eliminar" style="padding: 5px 10px;">🗑️</button>
-                        </td>
-                    </tr>
-                `).join('');
+            if (!token) {
+                mostrarMensaje('❌ No hay sesión activa. Inicia sesión nuevamente.', 'error');
+                window.location.href = 'login-admin.html';
+                return;
             }
-        } catch (error) {
-            console.error('Error cargando bitácora:', error);
-        }
-    }
-
-    // Cargar clases
-    async function cargarClases() {
-        try {
-            const clases = await fetchAPI('/clases');
-            const tbody = document.getElementById('tabla-clases');
             
-            if (tbody) {
-                tbody.innerHTML = clases.map(clase => `
-                    <tr>
-                        <td>${clase.nombre}</td>
-                        <td>${clase.grado}° Grado</td>
-                        <td>${clase.grupo}</td>
-                        <td>${clase.maestro}</td>
-                        <td>
-                            <button onclick="eliminarClase(${clase.id})" class="btn-eliminar" style="padding: 5px 10px;">🗑️</button>
-                        </td>
-                    </tr>
-                `).join('');
-            }
-        } catch (error) {
-            console.error('Error cargando clases:', error);
-        }
-    }
-
-    // Eliminar registro
-    async function eliminarRegistro(id) {
-        if (confirm('¿Eliminar este registro?')) {
-            try {
-                await fetchAPI(`/bitacora/${id}`, { method: 'DELETE' });
-                alert('✅ Registro eliminado');
-                cargarBitacora();
-            } catch (error) {
-                alert('❌ Error al eliminar');
-            }
-        }
-    }
-
-    // Eliminar clase
-    async function eliminarClase(id) {
-        if (confirm('¿Eliminar esta clase?')) {
-            try {
-                await fetchAPI(`/clases/${id}`, { method: 'DELETE' });
-                alert('✅ Clase eliminada');
-                cargarClases();
-            } catch (error) {
-                alert('❌ Error al eliminar');
-            }
-        }
-    }
-
-    // Crear clase
-    document.addEventListener('DOMContentLoaded', function() {
-        const formClase = document.getElementById('form-clase');
-        if (formClase) {
-            formClase.addEventListener('submit', async function(e) {
-                e.preventDefault();
-                
-                const grado = document.getElementById('grado').value;
-                const grupo = document.getElementById('grupo').value;
-                const nombre = document.getElementById('nombre_clase').value;
-                const maestro = document.getElementById('maestro').value;
-                const codigo = grado + grupo;
-                
-                try {
-                    await fetchAPI('/clases', {
-                        method: 'POST',
-                        body: JSON.stringify({ codigo, nombre, grado, grupo, maestro })
-                    });
-                    
-                    alert('✅ Clase creada');
-                    formClase.reset();
-                    cargarClases();
-                } catch (error) {
-                    alert('❌ Error al crear clase');
+            const url = `${window.API_URL}/respaldo/crear`;
+            console.log('📡 URL del respaldo:', url);
+            
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Authorization': token,
+                    'Content-Type': 'application/json'
                 }
             });
-        }
-    });
-
-
-// Función respaldo
-async function crearRespaldo() {
-    // mensaje de carga
-    mostrarMensaje('⏳ Creando respaldo... Por favor espere.', 'info');
-    
-    try {
-        const token = localStorage.getItem('token');
-        
-        const response = await fetch('/api/respaldo/crear', {
-            method: 'POST',
-            headers: {
-                'Authorization': token,
-                'Content-Type': 'application/json'
-            }
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            // éxito con detalles
-            mostrarMensaje(
-                `✅ Respaldo creado exitosamente!\n\n` +
-                `📁 Archivo: ${data.archivo}\n` +
-                `💾 Tamaño: ${data.tamaño_mb} MB\n` +
-                `📅 Fecha: ${data.fecha}\n\n` +
-                `📂 Ubicación: C:\\Backups\\SIGELAB\\`,
-                'exito'
-            );
             
-            // recargar lista de respaldos si tienes una tabla
-            if (typeof cargarListaRespaldos === 'function') {
-                cargarListaRespaldos();
+            console.log('📡 Respuesta status:', response.status);
+            
+            if (response.status === 401) {
+                mostrarMensaje('❌ Sesión expirada. Inicia sesión nuevamente.', 'error');
+                localStorage.removeItem('token');
+                window.location.href = 'login-admin.html';
+                return;
             }
-        } else {
-            mostrarMensaje(`❌ Error: ${data.error}`, 'error');
+            
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || `Error ${response.status}`);
+            }
+            
+            const blob = await response.blob();
+            
+            const contentDisposition = response.headers.get('Content-Disposition');
+            let filename = `sigelab_backup_${new Date().toISOString().replace(/[:.]/g, '-')}.sql`;
+            if (contentDisposition) {
+                const match = contentDisposition.match(/filename=(.+)/);
+                if (match) filename = match[1];
+            }
+            
+            const url_blob = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url_blob;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url_blob);
+            
+            const tamañoMB = (blob.size / 1024 / 1024).toFixed(2);
+            mostrarMensaje(`✅ Respaldo creado exitosamente!\n📁 Archivo: ${filename}\n💾 Tamaño: ${tamañoMB} MB`, 'exito');
+            
+        } catch (error) {
+            console.error('❌ Error al crear respaldo:', error);
+            mostrarMensaje(`❌ Error: ${error.message}`, 'error');
         }
-    } catch (error) {
-        console.error('Error al crear respaldo:', error);
-        mostrarMensaje('❌ Error de conexión al servidor', 'error');
     }
-}
 
-// Función para mostrar mensajes
-function mostrarMensaje(mensaje, tipo) {
-    // Crear elemento de mensaje flotante
-    const msgDiv = document.createElement('div');
-    msgDiv.className = `mensaje-flotante ${tipo}`;
-    msgDiv.innerHTML = mensaje.replace(/\n/g, '<br>');
-    msgDiv.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        background: ${tipo === 'exito' ? '#28a745' : tipo === 'error' ? '#dc3545' : '#17a2b8'};
-        color: white;
-        padding: 15px 20px;
-        border-radius: 8px;
-        z-index: 9999;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-        max-width: 400px;
-    `;
-    document.body.appendChild(msgDiv);
-    
-    // Auto-cerrar después de 5 segundos
-    setTimeout(() => {
-        msgDiv.remove();
-    }, 5000);
-}
+    function mostrarMensaje(mensaje, tipo) {
+        const msgDiv = document.createElement('div');
+        msgDiv.className = `mensaje-flotante ${tipo}`;
+        msgDiv.innerHTML = mensaje.replace(/\n/g, '<br>');
+        msgDiv.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: ${tipo === 'exito' ? '#28a745' : tipo === 'error' ? '#dc3545' : '#17a2b8'};
+            color: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+            z-index: 9999;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            max-width: 400px;
+            white-space: pre-line;
+        `;
+        document.body.appendChild(msgDiv);
+        setTimeout(() => msgDiv.remove(), 5000);
+    }
 
-    // Cerrar sesión
     function logout() {
         localStorage.removeItem('token');
         localStorage.removeItem('usuario');
@@ -402,14 +316,6 @@ function mostrarMensaje(mensaje, tipo) {
         cargarBitacora();
     }
 
-    function generarReporte(tipo) {
-        alert(`📊 Generando reporte de ${tipo}...`);
-    }
-
-    function exportarExcel(tipo) {
-        alert(`📊 Exportando ${tipo} a Excel...`);
-    }
-
     function actualizarEstadoMasivo() {
         alert('🔧 Función en desarrollo');
     }
@@ -417,6 +323,6 @@ function mostrarMensaje(mensaje, tipo) {
     function generarReporteRapido() {
         alert('📊 Generando reporte rápido...');
     }
-    </script>
+</script>
 </body>
 </html>
